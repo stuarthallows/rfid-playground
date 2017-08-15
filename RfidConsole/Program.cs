@@ -157,9 +157,6 @@ namespace RfidConsole
 
             RadioEnumeration re = new RadioEnumeration();
 
-            // **************************************************
-            // This always returns re.countRadios == 0 !!!!!?????
-            // **************************************************
             result = link.RetrieveAttachedRadiosList(re, 0);
 
             Console.WriteLine();
