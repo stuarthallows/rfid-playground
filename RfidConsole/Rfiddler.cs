@@ -128,7 +128,7 @@ namespace RfidConsole
 
             Rfiddler.PAUSE(1);
 
-            CloseRadio(link, radioHandle);
+            RadioClose(link, radioHandle);
 
             Rfiddler.PAUSE(1);
 
@@ -262,7 +262,7 @@ namespace RfidConsole
 
             RegisterAccess(link, radioHandle);
 
-            CloseRadio(link, radioHandle);
+            RadioClose(link, radioHandle);
 
             link.Shutdown();
         }
@@ -877,7 +877,7 @@ namespace RfidConsole
             Console.WriteLine();
             Console.WriteLine("link.RadioGetPowerState result : " + result);
             Console.WriteLine("\tRadioHandle used    : " + radioHandle);
-            Console.WriteLine("\tPowerStat found     : " + powerState);
+            Console.WriteLine("\tPowerState found    : " + powerState);
         }
 
         private static void SetRadioOperationMode(Linkage link, int radioHandle, RadioOperationMode operationMode)
@@ -930,7 +930,7 @@ namespace RfidConsole
             Console.WriteLine("\tOperationMode found : " + operationMode);
         }
 
-        private static void CloseRadio(Linkage link, int radioHandle)
+        private static void RadioClose(Linkage link, int radioHandle)
         {
             Result result = link.RadioClose(radioHandle);
 
