@@ -7,6 +7,13 @@ using Serilog;
 
 namespace RfidConsole
 {
+    /// <summary>
+    /// Exercices the Linkage library.
+    /// </summary>
+    /// <remarks>
+    /// Essentially this code is a more structured version of the example code in the SDK at D:\Code\indy_sdk\host\rfid_library\samples\csharp\Example\Example.cs
+    /// The Linkage library source code is in the SDK at ...\indy_sdk\host\rfid_library\samples\csharp\Linkage\Common\Linkage.cs
+    /// </remarks>
     public class Rfiddler
     {
         private static readonly ILogger Logger = Log.Logger.ForContext<Rfiddler>();
@@ -759,6 +766,7 @@ namespace RfidConsole
 
             var packetFlags = packetBuffer[1];
             var packetType = (Int16)((packetBuffer[3] << 8) | packetBuffer[2]);
+
             var packetLength = (Int16)((packetBuffer[5] << 8) | packetBuffer[4]);
             var packetTypeString = "Mac Packet rcv'd, PacketType = ";
             packetTypeString += $"0x{packetType:X4}";
