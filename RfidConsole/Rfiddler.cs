@@ -9,12 +9,14 @@ namespace RfidConsole
 {
     public class Rfiddler
     {
-        static Int32 callbackCount = 0;
+        static Int32 callbackCount;
         static uint enableSelectCriteria = 0x00; // set to 0x01 to enable
         static uint enablePostSingulationMatch = 0x00; // set to 0x02 to enable
         static uint enableTagFocus = 0x00; // set to 0x01 to enable
         static uint enableTagSuppression = 0x00; // set to 0x01 to enable
         static uint enableFastId = 0x00; // set to 0x01 to enable
+        private bool enableTagLock = false;
+        private bool enableTagKill = false;
 
         public Int32 MyCallback
         (
@@ -25,39 +27,32 @@ namespace RfidConsole
         )
         {
             Byte[] packetBuffer = new Byte[bufferLength];
-            Byte packetFlags;
-            Int16 packetType;
-            Int16 packetLength;
 
             Marshal.Copy(pBuffer, packetBuffer, 0, (Int32) bufferLength);
 
-            packetFlags = packetBuffer[1];
-            packetType = (Int16) ((packetBuffer[3] << 8) | packetBuffer[2]);
-            packetLength = (Int16) ((packetBuffer[5] << 8) | packetBuffer[4]);
-            string packetTypeString;
-            packetTypeString = "Mac Packet rcv'd, PacketType = ";
-            packetTypeString += string.Format("0x{0:X4}", packetType);
+            var packetFlags = packetBuffer[1];
+            var packetType = (Int16) ((packetBuffer[3] << 8) | packetBuffer[2]);
+            var packetLength = (Int16) ((packetBuffer[5] << 8) | packetBuffer[4]);
+            var packetTypeString = "Mac Packet rcv'd, PacketType = ";
+            packetTypeString += $"0x{packetType:X4}";
 
             Console.WriteLine(packetTypeString);
 
             // if its an  end packet, print the status string too.
             if (1 == packetType)
             {
-                string packetStatusString;
-                packetStatusString = "EndPacket Status = ";
-                packetStatusString += string.Format("0x{0:X2}{1:X2}{2:X2}{3:X2}", packetBuffer[15], packetBuffer[14],
-                    packetBuffer[13], packetBuffer[12]);
+                var packetStatusString = "EndPacket Status = ";
+                packetStatusString += string.Format("0x{0:X2}{1:X2}{2:X2}{3:X2}", packetBuffer[15], packetBuffer[14], packetBuffer[13], packetBuffer[12]);
 
                 Console.WriteLine(packetStatusString);
             }
             else if (5 == packetType)
             {
                 Int16 length = (Int16) (((packetLength - 3) * 4) - (packetFlags >> 6));
-                string packetEpcString;
-                packetEpcString = "    EPC = ";
+                string packetEpcString = "    EPC = ";
                 for (int index = 0; index < length; ++index)
                 {
-                    packetEpcString += string.Format("{0:X2}", packetBuffer[20 + index]);
+                    packetEpcString += $"{packetBuffer[20 + index]:X2}";
                 }
 
                 // Console.WriteLine(packetEpcString);
@@ -65,8 +60,7 @@ namespace RfidConsole
             else if (6 == packetType) // access packet, print the flag word if non-zero, along with error indicators
             {
                 Byte flagWord = packetBuffer[1];
-                string packetFlagString;
-                packetFlagString = "AccessPacket Flag = ";
+                var packetFlagString = "AccessPacket Flag = ";
                 packetFlagString += string.Format("0x{0:X2}", flagWord);
 
                 if (0 != (flagWord & 0x03)) // some error occurred
@@ -95,7 +89,7 @@ namespace RfidConsole
 
         // The following is just used to supply a pause between execution of the functions so users have a chance to 
         // view output details prior to scrolling off the screen...
-        static void PAUSE(int seconds)
+        static void Pause(int seconds)
         {
             Console.WriteLine();
             Console.WriteLine();
@@ -118,7 +112,7 @@ namespace RfidConsole
 
             ShowLinkageLibraryVersion(link);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             RadioEnumeration re = EnumerateRadios(link);
 
@@ -126,109 +120,109 @@ namespace RfidConsole
 
             radioHandle = OpenRadio(link, re, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             RadioClose(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             radioHandle = OpenRadio(link, re, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetRadioOperationMode(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetMacVersion(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetMacBootloaderVersion(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             SetRadioOperationMode(link, radioHandle, RadioOperationMode.NONCONTINUOUS);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetRadioOperationMode(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetRadioPowerState(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             SetRadioPowerState(link, radioHandle, RadioPowerState.FULL);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetRadioPowerState(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             SetRadioPowerState(link, radioHandle, RadioPowerState.STANDBY);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetRadioPowerState(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             EnumerateLinkProfiles(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetAntennaPortStatus(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             SetAntennaPortStatus(link, radioHandle, AntennaPortState.DISABLED);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetAntennaPortStatus(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             SetAntennaPortStatus(link, radioHandle, AntennaPortState.ENABLED);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             GetAntennaPortStatus(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             AntennaPortGetConfiguration(link, radioHandle);
 
             AntennaPortSetConfiguration();
             
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             var selectCriteria = Set18K6CSelectCriteria(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Get18K6CSelectCriteria(link, radioHandle, selectCriteria);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Set18K6CQueryTagGroup(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             UseImpinjExtensions(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Set18K6CPostMatchCriteria(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Set18K6CSingulationAlgorithmParameters(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             //result = link.RadioSetResponseDataMode( radioHandle, ResponseType.DATA, ResponseMode.EXTENDED );
 
@@ -238,19 +232,19 @@ namespace RfidConsole
 
             Tag18K6CInventory(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Tag18K6CRead(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Tag18K6CQT(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Tag18K6CBlockErase(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             Tag18K6CKill(link, radioHandle);
 
@@ -258,7 +252,7 @@ namespace RfidConsole
 
             RadioTurnCarrierWaveOnRandom(link, radioHandle);
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
             RegisterAccess(link, radioHandle);
 
@@ -269,8 +263,6 @@ namespace RfidConsole
 
         private static void RegisterAccess(Linkage link, int radioHandle)
         {
-            RegisterInfo info = new RegisterInfo();
-
             // test a banked register write            
             var result = link.MacWriteBankedRegister(radioHandle, 0x704, 2, 0xA5A5);
             Console.WriteLine();
@@ -379,7 +371,7 @@ namespace RfidConsole
             randomCwParms.context = (IntPtr) null;
             randomCwParms.callbackCode = (IntPtr) null;
 #else
-            randomCwParms.callback = new CallbackDelegate(program.MyCallback);
+            randomCwParms.callback = program.MyCallback;
             randomCwParms.context = IntPtr.Zero;
             randomCwParms.callbackCode = IntPtr.Zero;
 #endif
@@ -394,13 +386,18 @@ namespace RfidConsole
 
         private static void Tag18K6CLock(Linkage link, int radioHandle)
         {
-
             var program = new Rfiddler();
+
+            // LOCK check - do not want to accidentally have tags locked unexpectedly...
+            if (!program.enableTagLock)
+            {
+                return;
+            }
 
             LockParms lockParms = new LockParms();
 
             lockParms.common.tagStopCount = 0;
-            lockParms.common.callback = new CallbackDelegate(program.MyCallback);
+            lockParms.common.callback = program.MyCallback;
             lockParms.common.context = IntPtr.Zero;
             lockParms.common.callbackCode = IntPtr.Zero;
 
@@ -412,34 +409,38 @@ namespace RfidConsole
 
             lockParms.accessPassword = 0x0;
 
-            //Removed LOCK test - do not want to accidentally have tags locked unexpectedly...
-            // var result = link.Tag18K6CLock(radioHandle, lockParms, 0);
+            var result = link.Tag18K6CLock(radioHandle, lockParms, 0);
 
-            //Console.WriteLine();
-            //Console.WriteLine();
-            //Console.WriteLine("link.Tag18K6CLock result : " + result);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine("link.Tag18K6CLock result : " + result);
         }
 
         private static void Tag18K6CKill(Linkage link, int radioHandle)
         {
             var program = new Rfiddler();
 
+            // KILL check - do not want to accidentally have tags killed unexpectedly...
+            if (!program.enableTagKill)
+            {
+                return;
+            }
+
             KillParms killParms = new KillParms();
 
             killParms.common.tagStopCount = 0;
-            killParms.common.callback = new CallbackDelegate(program.MyCallback);
+            killParms.common.callback = program.MyCallback;
             killParms.common.context = IntPtr.Zero;
             killParms.common.callbackCode = IntPtr.Zero;
 
             killParms.accessPassword = 0x0;
             killParms.killCmdParms.killPassword = 0x0;
 
-            // Removed KILL test - do not want to accidentally have tags killed unexpectedly...
-            //var result = link.Tag18K6CKill(radioHandle, killParms, 0);
+            var result = link.Tag18K6CKill(radioHandle, killParms, 0);
 
-            //Console.WriteLine();
-            //Console.WriteLine();
-            //Console.WriteLine("link.Tag18K6CKill result : " + result);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine("link.Tag18K6CKill result : " + result);
         }
 
         private static void Tag18K6CBlockErase(Linkage link, int radioHandle)
@@ -452,7 +453,7 @@ namespace RfidConsole
             Console.WriteLine("Limiting of 40 MAC packets");
 
             blockEraseParms.common.tagStopCount = 0;
-            blockEraseParms.common.callback = new CallbackDelegate(program.MyCallback);
+            blockEraseParms.common.callback = program.MyCallback;
             blockEraseParms.common.context = IntPtr.Zero;
             blockEraseParms.common.callbackCode = IntPtr.Zero;
 
@@ -480,7 +481,7 @@ namespace RfidConsole
             Console.WriteLine("Limiting of 40 MAC packets");
 
             qtParms.common.tagStopCount = 0;
-            qtParms.common.callback = new CallbackDelegate(program.MyCallback);
+            qtParms.common.callback = program.MyCallback;
             qtParms.common.context = IntPtr.Zero;
             qtParms.common.callbackCode = IntPtr.Zero;
 
@@ -518,7 +519,7 @@ namespace RfidConsole
             Console.WriteLine("Limiting of 40 MAC packets");
 
             readParms.common.tagStopCount = 0;
-            readParms.common.callback = new CallbackDelegate(program.MyCallback);
+            readParms.common.callback = program.MyCallback;
             readParms.common.context = IntPtr.Zero;
             readParms.common.callbackCode = IntPtr.Zero;
 
@@ -548,7 +549,7 @@ namespace RfidConsole
             inventoryParms.common = new CommonParms();
 
             inventoryParms.common.tagStopCount = 0;
-            inventoryParms.common.callback = new CallbackDelegate(program.MyCallback);
+            inventoryParms.common.callback = program.MyCallback;
             inventoryParms.common.context = IntPtr.Zero;
             inventoryParms.common.callbackCode = IntPtr.Zero;
 
@@ -583,7 +584,7 @@ namespace RfidConsole
             Console.WriteLine("link.Set18K6CSingulationAlgorithmParameters Fixed Q result : " + result);
 
 
-            Rfiddler.PAUSE(1);
+            Pause(1);
 
 
             DynamicQParms dqp = new DynamicQParms();
@@ -640,12 +641,11 @@ namespace RfidConsole
         {
             ImpinjExtensions extensions = new ImpinjExtensions();
 
-            // retrieve current settings
+            // Retrieve current settings
             var result = link.RadioGetImpinjExtensions(radioHandle, extensions);
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine("link.RadioGetImpinjExtensions result : " + result);
-
 
             // now update based on the enables
             if (1 == enableTagFocus)
@@ -688,6 +688,7 @@ namespace RfidConsole
             {
                 group.selected = Selected.SELECT_ASSERTED;
             }
+
             if (1 == enableTagFocus)
             {
                 group.session = Session.S1;
@@ -817,7 +818,7 @@ namespace RfidConsole
                 Console.WriteLine("\tRadioHandle used           : " + radioHandle);
                 Console.WriteLine("\tCurrent Link Profile found : " + currentLinkProfile);
 
-                Rfiddler.PAUSE(1);
+                Pause(1);
             }
 
 
@@ -963,7 +964,7 @@ namespace RfidConsole
             Console.WriteLine("\tRadioEnum.totalLength  : " + re.totalLength);
             Console.WriteLine("\tRadioEnum.countRadios  : " + re.countRadios);
 
-            Rfiddler.PAUSE(5);
+            Pause(5);
 
             for (int index = 0; index < re.radioInfo.Length; ++index)
             {
@@ -987,7 +988,7 @@ namespace RfidConsole
 
                 Console.WriteLine();
 
-                Rfiddler.PAUSE(1);
+                Pause(1);
             }
 
             return re;
