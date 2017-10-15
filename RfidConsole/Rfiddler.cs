@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.InteropServices;
-using System.Threading;
 using rfid;
 using rfid.Constants;
 using rfid.Structures;
@@ -90,32 +89,11 @@ namespace RfidConsole
             return 0;
         }
 
-        // The following is just used to supply a pause between execution of the functions so users have a chance to 
-        // view output details prior to scrolling off the screen...
-        static void Pause(int seconds)
-        {
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
-            Console.Write("Pausing for " + seconds + " seconds ");
-
-            for (int index = 0; index < seconds; ++index)
-            {
-                Thread.Sleep(1000);
-
-                Console.Write(".");
-            }
-
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
-        }
-
         public static void Start(string[] args)
         {
             Linkage link = new Linkage();
 
             ShowLinkageLibraryVersion(link);
-
-            Pause(1);
 
             RadioEnumeration re = EnumerateRadios(link);
 
@@ -123,109 +101,57 @@ namespace RfidConsole
 
             radioHandle = OpenRadio(link, re, radioHandle);
 
-            Pause(1);
-
             RadioClose(link, radioHandle);
-
-            Pause(1);
 
             radioHandle = OpenRadio(link, re, radioHandle);
 
-            Pause(1);
-
             GetRadioOperationMode(link, radioHandle);
-
-            Pause(1);
 
             GetMacVersion(link, radioHandle);
 
-            Pause(1);
-
             GetMacBootloaderVersion(link, radioHandle);
-
-            Pause(1);
 
             SetRadioOperationMode(link, radioHandle, RadioOperationMode.NONCONTINUOUS);
 
-            Pause(1);
-
             GetRadioOperationMode(link, radioHandle);
 
-            Pause(1);
-
             GetRadioPowerState(link, radioHandle);
-
-            Pause(1);
 
             SetRadioPowerState(link, radioHandle, RadioPowerState.FULL);
 
-            Pause(1);
-
             GetRadioPowerState(link, radioHandle);
-
-            Pause(1);
 
             SetRadioPowerState(link, radioHandle, RadioPowerState.STANDBY);
 
-            Pause(1);
-
             GetRadioPowerState(link, radioHandle);
-
-            Pause(1);
 
             EnumerateLinkProfiles(link, radioHandle);
 
-            Pause(1);
-
             GetAntennaPortStatus(link, radioHandle);
-
-            Pause(1);
 
             SetAntennaPortStatus(link, radioHandle, AntennaPortState.DISABLED);
 
-            Pause(1);
-
             GetAntennaPortStatus(link, radioHandle);
-
-            Pause(1);
-
+            
             SetAntennaPortStatus(link, radioHandle, AntennaPortState.ENABLED);
 
-            Pause(1);
-
             GetAntennaPortStatus(link, radioHandle);
-
-            Pause(1);
 
             AntennaPortGetConfiguration(link, radioHandle);
 
             AntennaPortSetConfiguration();
             
-            Pause(1);
-
             var selectCriteria = Set18K6CSelectCriteria(link, radioHandle);
-
-            Pause(1);
 
             Get18K6CSelectCriteria(link, radioHandle, selectCriteria);
 
-            Pause(1);
-
             Set18K6CQueryTagGroup(link, radioHandle);
-
-            Pause(1);
 
             UseImpinjExtensions(link, radioHandle);
 
-            Pause(1);
-
             Set18K6CPostMatchCriteria(link, radioHandle);
 
-            Pause(1);
-
             Set18K6CSingulationAlgorithmParameters(link, radioHandle);
-
-            Pause(1);
 
             //result = link.RadioSetResponseDataMode( radioHandle, ResponseType.DATA, ResponseMode.EXTENDED );
 
@@ -235,27 +161,17 @@ namespace RfidConsole
 
             Tag18K6CInventory(link, radioHandle);
 
-            Pause(1);
-
             Tag18K6CRead(link, radioHandle);
-
-            Pause(1);
 
             Tag18K6CQT(link, radioHandle);
 
-            Pause(1);
-
             Tag18K6CBlockErase(link, radioHandle);
-
-            Pause(1);
 
             Tag18K6CKill(link, radioHandle);
 
             Tag18K6CLock(link, radioHandle);
 
             RadioTurnCarrierWaveOnRandom(link, radioHandle);
-
-            Pause(1);
 
             RegisterAccess(link, radioHandle);
 
@@ -565,7 +481,8 @@ namespace RfidConsole
 
         private static void Set18K6CSingulationAlgorithmParameters(Linkage link, int radioHandle)
         {
-            Result result;
+            // Fixed.
+
             FixedQParms fqp = new FixedQParms();
 
             fqp.qValue = 1;
@@ -580,15 +497,13 @@ namespace RfidConsole
                 fqp.toggleTarget = 1;
             }
 
-            result = link.Set18K6CSingulationAlgorithmParameters(radioHandle, SingulationAlgorithm.FIXEDQ, fqp);
+            var result = link.Set18K6CSingulationAlgorithmParameters(radioHandle, SingulationAlgorithm.FIXEDQ, fqp);
 
             logger.Information(string.Empty);
             logger.Information(string.Empty);
             logger.Information("link.Set18K6CSingulationAlgorithmParameters Fixed Q result : " + result);
 
-
-            Pause(1);
-
+            // Dynamic.
 
             DynamicQParms dqp = new DynamicQParms();
 
@@ -820,8 +735,6 @@ namespace RfidConsole
                 logger.Information("link.RadioGetCurrentLinkProfile result : " + result);
                 logger.Information("\tRadioHandle used           : " + radioHandle);
                 logger.Information("\tCurrent Link Profile found : " + currentLinkProfile);
-
-                Pause(1);
             }
 
 
@@ -967,8 +880,6 @@ namespace RfidConsole
             logger.Information("\tRadioEnum.totalLength  : " + re.totalLength);
             logger.Information("\tRadioEnum.countRadios  : " + re.countRadios);
 
-            Pause(5);
-
             for (int index = 0; index < re.radioInfo.Length; ++index)
             {
                 logger.Information("\tRadio " + index + " RadioEnum.radioInfo.length : " + re.radioInfo[index].length);
@@ -980,18 +891,16 @@ namespace RfidConsole
 
                 logger.Information("\tRadio " + index + " RadioEnum.radioInfo.cookie   : " + re.radioInfo[index].cookie);
                 logger.Information("\tRadio " + index + " RadioEnum.radioInfo.idLength : " + re.radioInfo[index].idLength);
-                Console.Write("\tRadio " + index + " RadioEnum.radioInfo.uniqueId : ");
+                string uniqueId = "\tRadio " + index + " RadioEnum.radioInfo.uniqueId : ";
 
                 int index2;
 
                 for (index2 = 0; index2 < re.radioInfo[index].idLength; ++index2)
                 {
-                    Console.Write((char) re.radioInfo[index].uniqueId[index2]);
+                    uniqueId += (char) re.radioInfo[index].uniqueId[index2];
                 }
 
-                logger.Information(string.Empty);
-
-                Pause(1);
+                logger.Information(uniqueId);
             }
 
             return re;

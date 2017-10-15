@@ -14,8 +14,6 @@ namespace RfidConsole
                     .WriteTo.Seq("http://localhost:5341")
                     .CreateLogger();
 
-                Log.Information("Hello, {Name}!", Environment.UserName);
-
                 Rfiddler.Start(args);
 
                 Log.CloseAndFlush();
