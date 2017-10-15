@@ -57,7 +57,7 @@ namespace RfidConsole
                     packetEpcString += $"{packetBuffer[20 + index]:X2}";
                 }
 
-                // logger.Verbose(packetEpcString);
+                logger.Verbose(packetEpcString);
             }
             else if (6 == packetType) // access packet, print the flag word if non-zero, along with error indicators
             {
@@ -154,9 +154,6 @@ namespace RfidConsole
             Set18K6CSingulationAlgorithmParameters(link, radioHandle);
 
             //result = link.RadioSetResponseDataMode( radioHandle, ResponseType.DATA, ResponseMode.EXTENDED );
-
-            //logger.Information(string.Empty);
-            //logger.Information(string.Empty);
             //logger.Information( "link.RadioSetResponseDataMode result : " + result );
 
             Tag18K6CInventory(link, radioHandle);
@@ -184,18 +181,11 @@ namespace RfidConsole
         {
             // test a banked register write            
             var result = link.MacWriteBankedRegister(radioHandle, 0x704, 2, 0xA5A5);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacWriteBankedRegister result : " + result);
 
             // should give an error, due to invalid selector
             result = link.MacWriteBankedRegister(radioHandle, 0x704, 16, 0xA5A5);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacWriteBankedRegister result (Expect Invalid Parameter) : " + result);
-
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
 
 
             // test a banked register read, last iteration i=16 should give an error
@@ -217,51 +207,35 @@ namespace RfidConsole
             UInt32[] readData = new UInt32[20];
             UInt32 numToRead = 16;
             result = link.MacReadOemData(radioHandle, 0x1f70, ref numToRead, readData);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacReadOemData result : " + result + ", numRead=" + numToRead);
 
             numToRead++;
             result = link.MacReadOemData(radioHandle, 0x1f70, ref numToRead, readData);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacReadOemData result (Expect Invalid Parameter) : " + result + ", numRead=" + numToRead);
 
             UInt32 numToWrite = 16;
             result = link.MacWriteOemData(radioHandle, 0x1f70, ref numToWrite, readData);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacWriteOemData result : " + result + ", numWritten=" + numToWrite);
 
             numToWrite++;
             result = link.MacWriteOemData(radioHandle, 0x1f70, ref numToWrite, readData);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacWriteOemData result (Expect Invalid Parameter) : " + result + ", numWritten=" + numToWrite);
 
 
             // force a mac error writing an invalid address and confirm mac error and macLastError
             // can be retrieved and reflect the same value
             result = link.MacWriteRegister(radioHandle, 0xFFFF, 0);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacWriteRegister result (Expect Invalid Parameter) : " + result);
             UInt32 macError = 0;
             UInt32 macLastError = 0;
             result = link.MacGetError(radioHandle, ref macError, ref macLastError);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacGetError (" + macError + ", " + macLastError + ") result : " + result);
 
             // confirm a successful register access clears the mac error but not the lastMacError
             UInt32 macVer = 0;
             result = link.MacReadRegister(radioHandle, 0x0000, ref macVer);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacReadRegister result : " + result);
             result = link.MacGetError(radioHandle, ref macError, ref macLastError);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacGetError (" + macError + ", " + macLastError + ") result : " + result);
         }
 
@@ -274,13 +248,10 @@ namespace RfidConsole
             // Enable Tx Random Data status packet by setting bits 7 and 0 in HST_CMNDIAGS (0x201)           
             UInt32 hstCmnDiags = 0;
             var result = link.MacReadRegister(radioHandle, 0x0201, ref hstCmnDiags);
-            logger.Information(string.Empty);
             logger.Information("link.MacReadRegister result : " + result);
             hstCmnDiags |= 0x81;
             result = link.MacWriteRegister(radioHandle, 0x0201, hstCmnDiags);
-            logger.Information(string.Empty);
             logger.Information("link.MacWriteRegister result : " + result);
-            logger.Information(string.Empty);
 
             logger.Information("Starting random cw test:");
             logger.Information("Limiting to 40 MAC packets");
@@ -298,8 +269,6 @@ namespace RfidConsole
 
             result = link.RadioTurnCarrierWaveOnRandom(radioHandle, randomCwParms);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioTurnCarrierWaveOnRandom result : " + result);
         }
 
@@ -330,8 +299,6 @@ namespace RfidConsole
 
             var result = link.Tag18K6CLock(radioHandle, lockParms, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Tag18K6CLock result : " + result);
         }
 
@@ -357,8 +324,6 @@ namespace RfidConsole
 
             var result = link.Tag18K6CKill(radioHandle, killParms, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Tag18K6CKill result : " + result);
         }
 
@@ -384,11 +349,10 @@ namespace RfidConsole
 
             var result = link.Tag18K6CBlockErase(radioHandle, blockEraseParms, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Tag18K6CBlockErase result : " + result);
         }
 
+        // ReSharper disable once InconsistentNaming
         private static void Tag18K6CQT(Linkage link, int radioHandle)
         {
             var program = new Rfiddler();
@@ -423,8 +387,6 @@ namespace RfidConsole
 
             var result = link.Tag18K6CQT(radioHandle, qtParms, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Tag18K6CQT result : " + result);
         }
 
@@ -450,8 +412,6 @@ namespace RfidConsole
 
             var result = link.Tag18K6CRead(radioHandle, readParms, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Tag18K6CRead result : " + result);
         }
 
@@ -474,8 +434,6 @@ namespace RfidConsole
 
             var result = link.Tag18K6CInventory(radioHandle, inventoryParms, enableSelectCriteria | enablePostSingulationMatch);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Tag18K6CInventory result : " + result);
         }
 
@@ -499,8 +457,6 @@ namespace RfidConsole
 
             var result = link.Set18K6CSingulationAlgorithmParameters(radioHandle, SingulationAlgorithm.FIXEDQ, fqp);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Set18K6CSingulationAlgorithmParameters Fixed Q result : " + result);
 
             // Dynamic.
@@ -523,8 +479,6 @@ namespace RfidConsole
 
             result = link.Set18K6CSingulationAlgorithmParameters(radioHandle, SingulationAlgorithm.DYNAMICQ, dqp);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Set18K6CSingulationAlgorithmParameters Dynamic Q result : " + result);
         }
 
@@ -550,8 +504,6 @@ namespace RfidConsole
 
             result = link.Set18K6CPostMatchCriteria(radioHandle, singulationCriteria, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Set18K6CPostMatchCriteria result : " + result);
         }
 
@@ -561,8 +513,6 @@ namespace RfidConsole
 
             // Retrieve current settings
             var result = link.RadioGetImpinjExtensions(radioHandle, extensions);
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioGetImpinjExtensions result : " + result);
 
             // now update based on the enables
@@ -587,8 +537,6 @@ namespace RfidConsole
 
             result = link.RadioSetImpinjExtensions(radioHandle, extensions);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioSetImpinjExtensions result : " + result);
         }
 
@@ -618,8 +566,6 @@ namespace RfidConsole
 
             var result = link.Set18K6CQueryTagGroup(radioHandle, group);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Set18K6CQueryTagGroup result : " + result);
         }
 
@@ -627,8 +573,6 @@ namespace RfidConsole
         {
             Result result = link.Get18K6CSelectCriteria(radioHandle, selectCriteria);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Get18K6CSelectCriteria result : " + result);
         }
 
@@ -656,8 +600,6 @@ namespace RfidConsole
 
             var result = link.Set18K6CSelectCriteria(radioHandle, selectCriteria, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.Set18K6CSelectCriteria result : " + result);
 
             return selectCriteria;
@@ -674,8 +616,6 @@ namespace RfidConsole
 
             var result = link.AntennaPortGetConfiguration(radioHandle, 0, antennaPortConfig);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.AntennaPortGetConfig result : " + result);
             logger.Information("\tRadioHandle used              : " + radioHandle);
             logger.Information("\tLength found                  : " + antennaPortConfig.length);
@@ -691,8 +631,6 @@ namespace RfidConsole
         {
             Result result = link.AntennaPortSetState(radioHandle, 0, portState);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information($"link.AntennaPortSetStatus ( {portState} ) result : " + result);
         }
 
@@ -702,8 +640,6 @@ namespace RfidConsole
 
             var result = link.AntennaPortGetStatus(radioHandle, 0, antennaPortStatus);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.AntennaPortGetStatus result : " + result);
             logger.Information("\tRadioHandle used       : " + radioHandle);
             logger.Information("\tLength found           : " + antennaPortStatus.length);
@@ -715,23 +651,21 @@ namespace RfidConsole
         {
             UInt32 currentLinkProfile = 0;
 
-            var result = link.RadioGetCurrentLinkProfile(radioHandle, ref currentLinkProfile);
+            link.RadioGetCurrentLinkProfile(radioHandle, ref currentLinkProfile);
             var savedLinkProfile = currentLinkProfile;
+
+            Result result;
 
             for (currentLinkProfile = 0; currentLinkProfile < 4; ++currentLinkProfile)
             {
                 result = link.RadioSetCurrentLinkProfile(radioHandle, currentLinkProfile);
 
-                logger.Information(string.Empty);
-                logger.Information(string.Empty);
                 logger.Information("link.RadioSetCurrentLinkProfile ( " + currentLinkProfile + " ) result : " + result);
                 logger.Information("\tRadioHandle used           : " + radioHandle);
 
 
                 result = link.RadioGetCurrentLinkProfile(radioHandle, ref currentLinkProfile);
 
-                logger.Information(string.Empty);
-                logger.Information(string.Empty);
                 logger.Information("link.RadioGetCurrentLinkProfile result : " + result);
                 logger.Information("\tRadioHandle used           : " + radioHandle);
                 logger.Information("\tCurrent Link Profile found : " + currentLinkProfile);
@@ -742,8 +676,6 @@ namespace RfidConsole
 
             result = link.RadioGetLinkProfile(radioHandle, currentLinkProfile, linkProfile);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioGetLinkProfile result : " + result);
             logger.Information("\tFound length           : " + linkProfile.length);
             logger.Information("\tFound profileId        : " + linkProfile.profileId);
@@ -768,8 +700,6 @@ namespace RfidConsole
             // Restore link profile
             result = link.RadioSetCurrentLinkProfile(radioHandle, savedLinkProfile);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioSetCurrentLinkProfile ( " + savedLinkProfile + " ) result : " + result);
             logger.Information("\tRadioHandle used           : " + radioHandle);
         }
@@ -778,8 +708,6 @@ namespace RfidConsole
         {
             Result result = link.RadioSetPowerState(radioHandle, powerState);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information($"link.RadioSetPowerState ( {powerState} ) result : " + result);
         }
 
@@ -788,8 +716,6 @@ namespace RfidConsole
             RadioPowerState powerState = new RadioPowerState();
             var result = link.RadioGetPowerState(radioHandle, ref powerState);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioGetPowerState result : " + result);
             logger.Information("\tRadioHandle used    : " + radioHandle);
             logger.Information("\tPowerState found    : " + powerState);
@@ -801,8 +727,6 @@ namespace RfidConsole
 
             var result = link.RadioGetOperationMode(radioHandle, ref operationMode);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioGetOperationMode result : " + result);
             logger.Information("\tRadioHandle used    : " + radioHandle);
             logger.Information("\tOperationMode found : " + operationMode);
@@ -812,8 +736,6 @@ namespace RfidConsole
         {
             Result result = link.RadioSetOperationMode(radioHandle, operationMode);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information($"link.RadioSetOperationMode ( {operationMode} ) result : " + result);
         }
 
@@ -822,8 +744,6 @@ namespace RfidConsole
             MacBootLoaderVersion blVersion = new MacBootLoaderVersion();
             var result = link.MacGetBootLoaderVersion(radioHandle, blVersion);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacGetBootLoaderVersion result : " + result);
             logger.Information("\tmajor : " + blVersion.major);
             logger.Information("\tminor : " + blVersion.minor);
@@ -836,8 +756,6 @@ namespace RfidConsole
             MacVersion macVersion = new MacVersion();
             var result = link.MacGetVersion(radioHandle, macVersion);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.MacGetVersion result : " + result);
             logger.Information("\tmajor : " + macVersion.major);
             logger.Information("\tminor : " + macVersion.minor);
@@ -849,8 +767,6 @@ namespace RfidConsole
         {
             Result result = link.RadioClose(radioHandle);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioClose result : " + result);
         }
 
@@ -858,8 +774,6 @@ namespace RfidConsole
         {
             Result result = link.RadioOpen(re.radioInfo[0].cookie, ref radioHandle, MacMode.DEFAULT);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RadioOpen result : " + result);
             logger.Information("\tCookie used          : " + re.radioInfo[0].cookie);
             logger.Information("\tRadioHandle obtained : " + radioHandle);
@@ -873,8 +787,6 @@ namespace RfidConsole
 
             Result result = link.RetrieveAttachedRadiosList(re, 0);
 
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
             logger.Information("link.RetrieveAttachedRadiosList result : " + result);
             logger.Information("\tRadioEnum.length       : " + re.length);
             logger.Information("\tRadioEnum.totalLength  : " + re.totalLength);
@@ -911,10 +823,7 @@ namespace RfidConsole
             LibraryVersion version = new LibraryVersion();
 
             var result = link.Startup(version, 0);
-
-            logger.Information(string.Empty);
-            logger.Information(string.Empty);
-
+            
             logger.Information("link.Startup result : " + result);
             logger.Information("\tVersion.major: " + version.major);
             logger.Information("\tVersion.minor: " + version.minor);
