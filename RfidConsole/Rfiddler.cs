@@ -356,14 +356,13 @@ namespace RfidConsole
 
         private static void RadioTurnCarrierWaveOnRandom(Linkage link, int radioHandle)
         {
-            Result result;
             var program = new Rfiddler();
 
             RandomCwParms randomCwParms = new RandomCwParms();
 
             // Enable Tx Random Data status packet by setting bits 7 and 0 in HST_CMNDIAGS (0x201)           
             UInt32 hstCmnDiags = 0;
-            result = link.MacReadRegister(radioHandle, 0x0201, ref hstCmnDiags);
+            var result = link.MacReadRegister(radioHandle, 0x0201, ref hstCmnDiags);
             Console.WriteLine();
             Console.WriteLine("link.MacReadRegister result : " + result);
             hstCmnDiags |= 0x81;
@@ -775,7 +774,7 @@ namespace RfidConsole
 
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine("link.AntennaPortSetStatus ( disabled ) result : " + result);
+            Console.WriteLine($"link.AntennaPortSetStatus ( {portState} ) result : " + result);
         }
 
         private static void GetAntennaPortStatus(Linkage link, int radioHandle)
@@ -795,10 +794,9 @@ namespace RfidConsole
 
         private static void EnumerateLinkProfiles(Linkage link, int radioHandle)
         {
-            Result result;
             UInt32 currentLinkProfile = 0;
 
-            result = link.RadioGetCurrentLinkProfile(radioHandle, ref currentLinkProfile);
+            var result = link.RadioGetCurrentLinkProfile(radioHandle, ref currentLinkProfile);
             var savedLinkProfile = currentLinkProfile;
 
             for (currentLinkProfile = 0; currentLinkProfile < 4; ++currentLinkProfile)
@@ -865,7 +863,7 @@ namespace RfidConsole
 
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine("link.RadioSetPowerState ( full ) result : " + result);
+            Console.WriteLine($"link.RadioSetPowerState ( {powerState} ) result : " + result);
         }
 
         private static void GetRadioPowerState(Linkage link, int radioHandle)
@@ -880,13 +878,26 @@ namespace RfidConsole
             Console.WriteLine("\tPowerState found    : " + powerState);
         }
 
+        private static void GetRadioOperationMode(Linkage link, int radioHandle)
+        {
+            RadioOperationMode operationMode = new RadioOperationMode();
+
+            var result = link.RadioGetOperationMode(radioHandle, ref operationMode);
+
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine("link.RadioGetOperationMode result : " + result);
+            Console.WriteLine("\tRadioHandle used    : " + radioHandle);
+            Console.WriteLine("\tOperationMode found : " + operationMode);
+        }
+
         private static void SetRadioOperationMode(Linkage link, int radioHandle, RadioOperationMode operationMode)
         {
             Result result = link.RadioSetOperationMode(radioHandle, operationMode);
 
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine("link.RadioSetOperationMode ( continuous ) result : " + result);
+            Console.WriteLine($"link.RadioSetOperationMode ( {operationMode} ) result : " + result);
         }
 
         private static void GetMacBootloaderVersion(Linkage link, int radioHandle)
@@ -915,19 +926,6 @@ namespace RfidConsole
             Console.WriteLine("\tminor : " + macVersion.minor);
             Console.WriteLine("\tmaintenance : " + macVersion.maintenance);
             Console.WriteLine("\trelease : " + macVersion.release);
-        }
-
-        private static void GetRadioOperationMode(Linkage link, int radioHandle)
-        {
-            RadioOperationMode operationMode = new RadioOperationMode();
-
-            var result = link.RadioGetOperationMode(radioHandle, ref operationMode);
-
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine("link.RadioGetOperationMode result : " + result);
-            Console.WriteLine("\tRadioHandle used    : " + radioHandle);
-            Console.WriteLine("\tOperationMode found : " + operationMode);
         }
 
         private static void RadioClose(Linkage link, int radioHandle)
