@@ -776,7 +776,7 @@ namespace RfidConsole
             else if (5 == packetType)
             {
                 Int16 length = (Int16)(((packetLength - 3) * 4) - (packetFlags >> 6));
-                string packetEpcString = "    EPC = ";
+                string packetEpcString = "EPC = ";
                 for (int index = 0; index < length; ++index)
                 {
                     packetEpcString += $"{packetBuffer[20 + index]:X2}";
