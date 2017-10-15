@@ -205,7 +205,7 @@ namespace RfidConsole
             randomCwParms.context = (IntPtr) null;
             randomCwParms.callbackCode = (IntPtr) null;
 #else
-            randomCwParms.callback = program.MyCallback;
+            randomCwParms.callback = program.PacketCallback;
             randomCwParms.context = IntPtr.Zero;
             randomCwParms.callbackCode = IntPtr.Zero;
 #endif
@@ -229,7 +229,7 @@ namespace RfidConsole
             LockParms lockParms = new LockParms();
 
             lockParms.common.tagStopCount = 0;
-            lockParms.common.callback = program.MyCallback;
+            lockParms.common.callback = program.PacketCallback;
             lockParms.common.context = IntPtr.Zero;
             lockParms.common.callbackCode = IntPtr.Zero;
 
@@ -259,7 +259,7 @@ namespace RfidConsole
             KillParms killParms = new KillParms();
 
             killParms.common.tagStopCount = 0;
-            killParms.common.callback = program.MyCallback;
+            killParms.common.callback = program.PacketCallback;
             killParms.common.context = IntPtr.Zero;
             killParms.common.callbackCode = IntPtr.Zero;
 
@@ -281,7 +281,7 @@ namespace RfidConsole
             logger.Information("Limiting of 40 MAC packets");
 
             blockEraseParms.common.tagStopCount = 0;
-            blockEraseParms.common.callback = program.MyCallback;
+            blockEraseParms.common.callback = program.PacketCallback;
             blockEraseParms.common.context = IntPtr.Zero;
             blockEraseParms.common.callbackCode = IntPtr.Zero;
 
@@ -308,7 +308,7 @@ namespace RfidConsole
             logger.Information("Limiting of 40 MAC packets");
 
             qtParms.common.tagStopCount = 0;
-            qtParms.common.callback = program.MyCallback;
+            qtParms.common.callback = program.PacketCallback;
             qtParms.common.context = IntPtr.Zero;
             qtParms.common.callbackCode = IntPtr.Zero;
 
@@ -344,7 +344,7 @@ namespace RfidConsole
             logger.Information("Limiting of 40 MAC packets");
 
             readParms.common.tagStopCount = 0;
-            readParms.common.callback = program.MyCallback;
+            readParms.common.callback = program.PacketCallback;
             readParms.common.context = IntPtr.Zero;
             readParms.common.callbackCode = IntPtr.Zero;
 
@@ -372,7 +372,7 @@ namespace RfidConsole
             inventoryParms.common = new CommonParms();
 
             inventoryParms.common.tagStopCount = 0;
-            inventoryParms.common.callback = program.MyCallback;
+            inventoryParms.common.callback = program.PacketCallback;
             inventoryParms.common.context = IntPtr.Zero;
             inventoryParms.common.callbackCode = IntPtr.Zero;
 
@@ -707,9 +707,8 @@ namespace RfidConsole
 
             Result result = link.RadioOpen(radios.radioInfo[0].cookie, ref radioHandle, MacMode.DEFAULT);
 
-            logger.Information("link.RadioOpen result : {Result}", result);
-            logger.Information("\tCookie used          : " + radios.radioInfo[0].cookie);
-            logger.Information("\tRadioHandle obtained : " + radioHandle);
+            logger.Information("link.RadioOpen result: {Result}", result);
+            logger.Information("Cookie used: {Cookie}, radio handle obtained: {RadioHandle}", radios.radioInfo[0].cookie, radioHandle);
 
             return radioHandle;
         }
@@ -723,41 +722,52 @@ namespace RfidConsole
 
         private RadioEnumeration RetrieveAttachedRadiosList()
         {
-            RadioEnumeration re = new RadioEnumeration();
+            RadioEnumeration radios = new RadioEnumeration();
 
-            Result result = link.RetrieveAttachedRadiosList(re, 0);
+            Result result = link.RetrieveAttachedRadiosList(radios, 0);
 
             logger.Information("link.RetrieveAttachedRadiosList result : {Result}", result);
-            logger.Information("\tRadioEnum.length       : " + re.length);
-            logger.Information("\tRadioEnum.totalLength  : " + re.totalLength);
-            logger.Information("\tRadioEnum.countRadios  : " + re.countRadios);
+            logger.Information("RadioEnum.length: {Length}, RadioEnum.totalLength: {TotalLength}, RadioEnum.countRadios: {CountRadios}", radios.length, radios.totalLength, radios.countRadios);
 
-            for (int index = 0; index < re.radioInfo.Length; ++index)
+            for (int index = 0; index < radios.radioInfo.Length; ++index)
             {
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.length : " + re.radioInfo[index].length);
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.length : " + radios.radioInfo[index].length);
 
-                var version = re.radioInfo[index].driverVersion;
+                var version = radios.radioInfo[index].driverVersion;
                 logger.Information("\tRadio " + index + " RadioEnum.radioInfo.driverVersion : {@Version}", new { version.major, version.minor, version.maintenance, version.release });
 
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.cookie   : " + re.radioInfo[index].cookie);
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.idLength : " + re.radioInfo[index].idLength);
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.cookie   : " + radios.radioInfo[index].cookie);
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.idLength : " + radios.radioInfo[index].idLength);
                 string uniqueId = "\tRadio " + index + " RadioEnum.radioInfo.uniqueId : ";
 
                 int index2;
 
-                for (index2 = 0; index2 < re.radioInfo[index].idLength; ++index2)
+                for (index2 = 0; index2 < radios.radioInfo[index].idLength; ++index2)
                 {
-                    uniqueId += (char) re.radioInfo[index].uniqueId[index2];
+                    uniqueId += (char) radios.radioInfo[index].uniqueId[index2];
                 }
 
                 logger.Information(uniqueId);
             }
 
-            return re;
+            return radios;
         }
 
-        private Int32 MyCallback([In] Int32 handle, [In] UInt32 bufferLength, [In] IntPtr pBuffer, [In, Out] IntPtr context)
+        private int PacketCallback([In] int handle, [In] uint bufferLength, [In] IntPtr pBuffer, [In, Out] IntPtr context)
         {
+            // Get common packet values.
+            // From the Impinj documentation:
+            //----------------------------------------------------------------------------------------------------------------------------
+            // Bytes    Value   Name            Description
+            //----------------------------------------------------------------------------------------------------------------------------
+            // 0:0      1       Pkt_Version     Packet version
+            // 1:1      -       Pkt_Flags       Packet flags (0 = Operation NOT continuous mode, 1 = Operation exected in continuous mode)
+            // 3:2      0x0000  Pkt_Type        Packet Type Value
+            // 5:4      2       Pkt_Length      Packet Length Value
+            // 7:6      0       Pkt_Reserved    Packet Reserved
+            // 11:8     -       Command         MAC Command that initiated the packet sequence. See Mac Commands for details.
+            // 15:12    -       MS_Ctr          Firmware millisecond counter when operation started
+
             Byte[] packetBuffer = new Byte[bufferLength];
 
             Marshal.Copy(pBuffer, packetBuffer, 0, (Int32)bufferLength);
@@ -774,6 +784,12 @@ namespace RfidConsole
             // if its an end packet, print the status string too.
             if (1 == packetType)
             {
+                var macErrorCode = (MacErrorCode)GetField(packetBuffer, 3, 12);
+                if (macErrorCode != MacErrorCode.MACERR_SUCCESS)
+                {
+                    logger.Verbose("MAC error code {MacErrorCode} returned by reader", macErrorCode);
+                }
+
                 var packetStatusString = "EndPacket Status = ";
                 packetStatusString += string.Format("0x{0:X2}{1:X2}{2:X2}{3:X2}", packetBuffer[15], packetBuffer[14], packetBuffer[13], packetBuffer[12]);
 
@@ -832,6 +848,29 @@ namespace RfidConsole
             logger.Information("link.Shutdown result : {Result}", result);
 
             disposed = true;
+        }
+
+        /// <summary>
+        /// Gets data in a field of an Indy Host Library return packet.
+        /// </summary>
+        private static uint GetField(byte[] packetBuffer, short bytesToRead, uint offsetPosition)
+        {
+            const int numberOfBitsInByte = 8;
+
+            if (offsetPosition + bytesToRead > packetBuffer.Length)
+            {
+                throw new ArgumentException("GetDataFromBuffer - offsetPosition + bytesToRead will exceed packetBuffer length");
+            }
+
+            uint value = 0;
+
+            for (int i = 0; i < bytesToRead; i++)
+            {
+                // Get the byte at the offset position and bit shift.
+                value += (uint)(packetBuffer[offsetPosition + i] << (i * numberOfBitsInByte));
+            }
+
+            return value;
         }
     }
 }
