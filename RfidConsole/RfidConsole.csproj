@@ -92,6 +92,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enumerations.cs" />
     <Compile Include="Rfiddler.cs" />
     <Compile Include="LinkageException.cs" />
     <Compile Include="Program.cs" />
