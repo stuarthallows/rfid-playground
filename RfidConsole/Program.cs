@@ -16,7 +16,10 @@ namespace RfidConsole
                     .MinimumLevel.Verbose()
                     .CreateLogger();
 
-                Rfiddler.Start(args);
+                using (var fiddler = new Rfiddler())
+                {
+                    fiddler.Start(args);
+                }
 
                 return 0;
             }
