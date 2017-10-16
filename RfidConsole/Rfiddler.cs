@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using rfid;
 using rfid.Constants;
 using rfid.Structures;
@@ -761,6 +760,10 @@ namespace RfidConsole
             Marshal.Copy(pBuffer, packetBuffer, 0, (Int32)bufferLength);
 
             var packetFlags = packetBuffer[1];
+
+
+            var packetType1 = (PacketType)(short)((packetBuffer[3] << 8) | packetBuffer[2]);
+
             var packetType = (Int16)((packetBuffer[3] << 8) | packetBuffer[2]);
 
             var packetLength = (Int16)((packetBuffer[5] << 8) | packetBuffer[4]);
@@ -770,7 +773,7 @@ namespace RfidConsole
             logger.Information(packetTypeString);
 
             // if its an end packet, print the status string too.
-            if (1 == packetType)
+            if (packetType1 == PacketType.CommandEnd)
             {
                 var macErrorCode = (MacErrorCode)GetField(packetBuffer, 3, 12);
                 if (macErrorCode != MacErrorCode.MACERR_SUCCESS)
@@ -783,7 +786,7 @@ namespace RfidConsole
 
                 logger.Information(packetStatusString);
             }
-            else if (5 == packetType)
+            else if (packetType1 == PacketType.Inventory)
             {
                 Int16 length = (Int16)(((packetLength - 3) * 4) - (packetFlags >> 6));
                 string packetEpcString = "EPC = ";
@@ -852,8 +855,10 @@ namespace RfidConsole
                 //var tidId = ConvertBytesToHexString(tid.ToArray());
                 //logger.Warning("The TID: {TID}", tidId);
             }
-            else if (6 == packetType) // access packet, print the flag word if non-zero, along with error indicators
+            else if (packetType1 == PacketType.TagAccess)
             {
+                // access packet, print the flag word if non-zero, along with error indicators
+
                 Byte flagWord = packetBuffer[1];
                 var packetFlagString = "AccessPacket Flag = ";
                 packetFlagString += string.Format("0x{0:X2}", flagWord);
