@@ -28,6 +28,16 @@ namespace RfidConsole
         [Option('f', "FastId", DefaultValue = false, HelpText = "Enable fast Id")]
         public bool IsFastIdEnabled { get; set; }
 
+        /// <summary>
+        /// If enabled the first time an error is encountered during an inventory the round will exit. This protects against certain errors
+        /// which if ignored can degrade and potentailly break the reader.
+        /// </summary>
+        /// <remarks>
+        /// IndyTool breaks on errors, Tracer does not.
+        /// </remarks>
+        [Option('x', "ExitOnError", DefaultValue = true, HelpText = "Exit inventory on first error")]
+        public bool IsExitOnErrorEnabled { get; set; }
+
         [HelpOption]
         public string GetUsage()
         {
@@ -39,7 +49,7 @@ namespace RfidConsole
                 AddDashesToOption = true
             };
 
-            help.AddPreOptionsLine("Usage: RfidConsole -d 2000 -p 300 -c 40 -t false -f false");
+            help.AddPreOptionsLine("Usage: RfidConsole -d 2000 -p 300 -c 40 -x true -t false -f false");
             help.AddOptions(this);
 
             return help;

@@ -767,35 +767,22 @@ namespace RfidConsole
             // 11:8     -       Command         MAC Command that initiated the packet sequence. See Mac Commands for details.
             // 15:12    -       MS_Ctr          Firmware millisecond counter when operation started
 
-            Byte[] packetBuffer = new Byte[bufferLength];
+            var packetBuffer = new byte[bufferLength];
 
-            Marshal.Copy(pBuffer, packetBuffer, 0, (Int32)bufferLength);
+            Marshal.Copy(pBuffer, packetBuffer, 0, (int)bufferLength);
 
             var packetFlags = packetBuffer[1];
+            
+            var packetType = (PacketType)(short)((packetBuffer[3] << 8) | packetBuffer[2]);
 
-
-            var packetType1 = (PacketType)(short)((packetBuffer[3] << 8) | packetBuffer[2]);
-            var packetType = (Int16)((packetBuffer[3] << 8) | packetBuffer[2]);
-
-            var packetLength = (Int16)((packetBuffer[5] << 8) | packetBuffer[4]);
-            var packetTypeString = $"Mac Packet received, PacketType = 0x{packetType:X4} ({packetType1})";
+            var packetLength = (short)((packetBuffer[5] << 8) | packetBuffer[4]);
+            var packetTypeString = $"Mac Packet received, PacketType = 0x{(int)packetType:X4} ({packetType})";
 
             logger.Information(packetTypeString);
 
-            // if its an end packet, print the status string too.
-            if (packetType1 == PacketType.CommandEnd)
+            if (packetType == PacketType.Inventory)
             {
-                var macErrorCode = (MacErrorCode)GetField(packetBuffer, 3, 12);
-                if (macErrorCode != MacErrorCode.MACERR_SUCCESS)
-                {
-                    logger.Warning("MAC error code {MacErrorCode} returned by reader", macErrorCode);
-                }
-
-                logger.Information($"EndPacket Status = 0x{packetBuffer[15]:X2}{packetBuffer[14]:X2}{packetBuffer[13]:X2}{packetBuffer[12]:X2}");
-            }
-            else if (packetType1 == PacketType.Inventory)
-            {
-                Int16 length = (Int16)(((packetLength - 3) * 4) - (packetFlags >> 6));
+                var length = (short)(((packetLength - 3) * 4) - (packetFlags >> 6));
                 string packetEpcString = "EPC = ";
                 for (int index = 0; index < length; ++index)
                 {
@@ -804,36 +791,42 @@ namespace RfidConsole
 
                 logger.Verbose(packetEpcString);
             }
-            else if (packetType1 == PacketType.TagAccess)
+            else if (packetType == PacketType.TagAccess)
             {
                 // access packet, print the flag word if non-zero, along with error indicators
 
-                Byte flagWord = packetBuffer[1];
-                var packetFlagString = "AccessPacket Flag = ";
-                packetFlagString += string.Format("0x{0:X2}", flagWord);
+                var flagWord = packetBuffer[1];
+                var packetFlagString = $"AccessPacket Flag = 0x{flagWord:X2}";
 
                 if (0 != (flagWord & 0x03)) // some error occurred
                 {
                     if (0 != (flagWord & 0x0E)) // backscatter error, reported in the tag_error_code
                     {
-                        packetFlagString += ", Error = " + string.Format("0x{0:X2}", packetBuffer[13]);
+                        packetFlagString += $", Error = 0x{packetBuffer[13]:X2}";
                     }
                     else // MAC protocol access error, reported prot_error_code field
                     {
-                        packetFlagString += ", Error = " + string.Format("0x{0:X2}{1:X2}", packetBuffer[15], packetBuffer[14]);
+                        packetFlagString += $", Error = 0x{packetBuffer[15]:X2}{packetBuffer[14]:X2}";
                     }
-                    logger.Information(packetFlagString);
+
+                    logger.Warning(packetFlagString);
                 }
+            }
+            else if (packetType == PacketType.CommandEnd)
+            {
+                // if its an end packet, print the status string too.
+                var macErrorCode = (MacErrorCode)GetField(packetBuffer, 3, 12);
+                if (macErrorCode != MacErrorCode.MACERR_SUCCESS)
+                {
+                    logger.Warning("MAC error code {MacErrorCode} returned by reader", macErrorCode);
+                }
+
+                logger.Information($"EndPacket Status = 0x{packetBuffer[15]:X2}{packetBuffer[14]:X2}{packetBuffer[13]:X2}{packetBuffer[12]:X2}");
             }
 
             ++_callbackCount;
 
-            if (options.PacketCount == _callbackCount)
-            {
-                return 1;
-            }
-
-            return 0;
+            return options.PacketCount == _callbackCount ? 1 : 0;
         }
 
         public void Dispose()

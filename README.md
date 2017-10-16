@@ -6,6 +6,7 @@
 ~~packet type enum in callback~~
 ~~reset device~~
 ~~params~~
+exit on read error
 log RFID tag
 trace debug port
 add a Get18K6CQueryTagGroup, does the Set change the defaults
