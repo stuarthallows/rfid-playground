@@ -95,7 +95,6 @@ namespace RfidConsole
             //logger.Information( "link.RadioSetResponseDataMode => " + result );
 
             Tag18K6CInventory(radioHandle);
-            Thread.Sleep(5000);
 
             Tag18K6CRead(radioHandle);
 
@@ -122,6 +121,49 @@ namespace RfidConsole
 
             logger.Information("link.Startup({Mode}) => {Result}", mode, result);
             logger.Information("LibraryVersion {@Version}", new { version.major, version.minor, version.maintenance, version.release });
+        }
+
+        private RadioEnumeration RetrieveAttachedRadiosList()
+        {
+            RadioEnumeration radios = new RadioEnumeration();
+
+            Result result = link.RetrieveAttachedRadiosList(radios, 0);
+
+            logger.Information("link.RetrieveAttachedRadiosList => {Result}", result);
+            logger.Information("RadioEnum.length: {Length}, RadioEnum.totalLength: {TotalLength}, RadioEnum.countRadios: {CountRadios}", radios.length, radios.totalLength, radios.countRadios);
+
+            for (int index = 0; index < radios.radioInfo.Length; ++index)
+            {
+                var version = radios.radioInfo[index].driverVersion;
+                var uniqueId = radios.radioInfo[index].uniqueId;
+
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.length : " + radios.radioInfo[index].length);
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.driverVersion : {@Version}", new { version.major, version.minor, version.maintenance, version.release });
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.cookie   : " + radios.radioInfo[index].cookie);
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.idLength : " + radios.radioInfo[index].idLength);
+                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.uniqueId : {UniqueId}", Encoding.ASCII.GetString(uniqueId, 0, uniqueId.Length));
+            }
+
+            return radios;
+        }
+
+        private int RadioOpen(RadioEnumeration radios)
+        {
+            var radioHandle = 0;
+
+            Result result = link.RadioOpen(radios.radioInfo[0].cookie, ref radioHandle, MacMode.DEFAULT);
+
+            logger.Information("link.RadioOpen => {Result}", result);
+            logger.Information("Cookie: {Cookie}, radio handle: {Handle}", radios.radioInfo[0].cookie, radioHandle);
+
+            return radioHandle;
+        }
+
+        private void RadioClose(int radioHandle)
+        {
+            Result result = link.RadioClose(radioHandle);
+
+            logger.Information("link.RadioClose => {Result}", result);
         }
 
         private void RegisterAccess(int radioHandle)
@@ -697,58 +739,6 @@ namespace RfidConsole
 
             logger.Information("link.MacGetVersion => {Result}", result);
             logger.Information("MacVersion {@Version}", new { macVersion.major, macVersion.minor, macVersion.maintenance, macVersion.release });
-        }
-
-        private int RadioOpen(RadioEnumeration radios)
-        {
-            var radioHandle = 0;
-
-            Result result = link.RadioOpen(radios.radioInfo[0].cookie, ref radioHandle, MacMode.DEFAULT);
-
-            logger.Information("link.RadioOpen => {Result}", result);
-            logger.Information("Cookie: {Cookie}, radio handle: {Handle}", radios.radioInfo[0].cookie, radioHandle);
-
-            return radioHandle;
-        }
-
-        private void RadioClose(int radioHandle)
-        {
-            Result result = link.RadioClose(radioHandle);
-
-            logger.Information("link.RadioClose => {Result}", result);
-        }
-
-        private RadioEnumeration RetrieveAttachedRadiosList()
-        {
-            RadioEnumeration radios = new RadioEnumeration();
-
-            Result result = link.RetrieveAttachedRadiosList(radios, 0);
-
-            logger.Information("link.RetrieveAttachedRadiosList => {Result}", result);
-            logger.Information("RadioEnum.length: {Length}, RadioEnum.totalLength: {TotalLength}, RadioEnum.countRadios: {CountRadios}", radios.length, radios.totalLength, radios.countRadios);
-
-            for (int index = 0; index < radios.radioInfo.Length; ++index)
-            {
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.length : " + radios.radioInfo[index].length);
-
-                var version = radios.radioInfo[index].driverVersion;
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.driverVersion : {@Version}", new { version.major, version.minor, version.maintenance, version.release });
-
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.cookie   : " + radios.radioInfo[index].cookie);
-                logger.Information("\tRadio " + index + " RadioEnum.radioInfo.idLength : " + radios.radioInfo[index].idLength);
-                string uniqueId = "\tRadio " + index + " RadioEnum.radioInfo.uniqueId : ";
-
-                int index2;
-
-                for (index2 = 0; index2 < radios.radioInfo[index].idLength; ++index2)
-                {
-                    uniqueId += (char) radios.radioInfo[index].uniqueId[index2];
-                }
-
-                logger.Information(uniqueId);
-            }
-
-            return radios;
         }
 
         private int PacketCallback([In] int handle, [In] uint bufferLength, [In] IntPtr pBuffer, [In, Out] IntPtr context)
