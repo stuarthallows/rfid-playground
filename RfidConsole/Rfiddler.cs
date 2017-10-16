@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using rfid;
 using rfid.Constants;
 using rfid.Structures;
@@ -14,6 +15,7 @@ namespace RfidConsole
     /// <remarks>
     /// Essentially this code is a more structured version of the example code in the SDK at D:\Code\indy_sdk\host\rfid_library\samples\csharp\Example\Example.cs
     /// The Linkage library source code is in the SDK at ...\indy_sdk\host\rfid_library\samples\csharp\Linkage\Common\Linkage.cs
+    /// For documentation of the underlying methods see IN_DG_IPJ_Indy_Host_Library_API_Reference_Manual_v2_6_0_20120504_R1.pdf
     /// </remarks>
     public class Rfiddler: IDisposable
     {
@@ -23,9 +25,9 @@ namespace RfidConsole
         static Int32 _callbackCount;
         static uint enableSelectCriteria = 0x00; // set to 0x01 to enable
         static uint enablePostSingulationMatch = 0x00; // set to 0x02 to enable
-        static uint enableTagFocus = 0x00; // set to 0x01 to enable
-        static uint enableTagSuppression = 0x00; // set to 0x01 to enable
-        static uint enableFastId = 0x00; // set to 0x01 to enable
+        static bool enableTagFocus;
+        private bool enableTagSuppression;
+        private bool enableFastId;
         private bool enableTagLock = false;
         private bool enableTagKill = false;
         private bool disposed;
@@ -54,11 +56,11 @@ namespace RfidConsole
 
             RadioGetPowerState(radioHandle);
 
-            SetRadioPowerState(radioHandle, RadioPowerState.FULL);
+            RadioSetPowerState(radioHandle, RadioPowerState.FULL);
 
             RadioGetPowerState(radioHandle);
 
-            SetRadioPowerState(radioHandle, RadioPowerState.STANDBY);
+            RadioSetPowerState(radioHandle, RadioPowerState.STANDBY);
 
             RadioGetPowerState(radioHandle);
 
@@ -76,7 +78,7 @@ namespace RfidConsole
 
             AntennaPortGetConfiguration(radioHandle);
 
-            AntennaPortSetConfiguration();
+            AntennaPortSetConfiguration(radioHandle, 2000, 300);
 
             var selectCriteria = Set18K6CSelectCriteria(radioHandle);
 
@@ -84,7 +86,7 @@ namespace RfidConsole
 
             Set18K6CQueryTagGroup(radioHandle);
 
-            UseImpinjExtensions(radioHandle);
+            ConfigureImpinjExtensions(radioHandle);
 
             Set18K6CPostMatchCriteria(radioHandle);
 
@@ -110,6 +112,8 @@ namespace RfidConsole
             RegisterAccess(radioHandle);
 
             RadioClose(radioHandle);
+
+            MacReset();
         }
 
         private void Startup(LibraryMode mode)
@@ -429,7 +433,8 @@ namespace RfidConsole
             fqp.qValue = 1;
             fqp.retryCount = 1;
             fqp.repeatUntilNoTags = 1;
-            if (1 == enableTagFocus)
+
+            if (enableTagFocus)
             {
                 fqp.toggleTarget = 0;
             }
@@ -451,7 +456,8 @@ namespace RfidConsole
             dqp.maxQValue = 7;
             dqp.retryCount = 1;
             dqp.thresholdMultiplier = 4;
-            if (1 == enableTagSuppression)
+
+            if (enableTagSuppression)
             {
                 dqp.toggleTarget = 0;
             }
@@ -489,38 +495,24 @@ namespace RfidConsole
             logger.Information("link.Set18K6CPostMatchCriteria => {Result}", result);
         }
 
-        private void UseImpinjExtensions(int radioHandle)
+        private void ConfigureImpinjExtensions(int radioHandle)
         {
-            ImpinjExtensions extensions = new ImpinjExtensions();
+            var extensions = new ImpinjExtensions();
 
-            // Retrieve current settings
             var result = link.RadioGetImpinjExtensions(radioHandle, extensions);
             logger.Information("link.RadioGetImpinjExtensions => {Result}", result);
+            logger.Information("ImpinjExtensions: {@Extensions}", new { extensions.fastId, extensions.tagFocus, extensions.blockWriteMode });
 
-            // now update based on the enables
-            if (1 == enableTagFocus)
-            {
-                extensions.tagFocus = TagFocus.FOCUS_ENABLED;
-            }
-            else
-            {
-                extensions.tagFocus = TagFocus.FOCUS_DISABLED;
-            }
-
-            if (1 == enableFastId)
-            {
-                extensions.fastId = FastId.FAST_ID_ENABLED;
-            }
-            else
-            {
-                extensions.fastId = FastId.FAST_ID_DISABLED;
-            }
-
+            extensions.tagFocus = enableTagFocus ? TagFocus.FOCUS_ENABLED : TagFocus.FOCUS_DISABLED;
+            extensions.fastId = enableFastId ? FastId.FAST_ID_ENABLED : FastId.FAST_ID_DISABLED;
             extensions.blockWriteMode = BlockWriteMode.AUTO;
 
             result = link.RadioSetImpinjExtensions(radioHandle, extensions);
-
             logger.Information("link.RadioSetImpinjExtensions => {Result}", result);
+
+            result = link.RadioGetImpinjExtensions(radioHandle, extensions);
+            logger.Information("link.RadioGetImpinjExtensions => {Result}", result);
+            logger.Information("ImpinjExtensions: {@Extensions}", new { extensions.fastId, extensions.tagFocus, extensions.blockWriteMode });
         }
 
         private void Set18K6CQueryTagGroup(int radioHandle)
@@ -538,7 +530,7 @@ namespace RfidConsole
                 group.selected = Selected.SELECT_ASSERTED;
             }
 
-            if (1 == enableTagFocus)
+            if (enableTagFocus)
             {
                 group.session = Session.S1;
             }
@@ -588,9 +580,24 @@ namespace RfidConsole
             return selectCriteria;
         }
 
-        private void AntennaPortSetConfiguration()
+        private void GetAntennaPortStatus(int radioHandle)
         {
-            // TODO:  Add Set config for antenna port...
+            AntennaPortStatus antennaPortStatus = new AntennaPortStatus();
+
+            var result = link.AntennaPortGetStatus(radioHandle, 0, antennaPortStatus);
+
+            logger.Information("link.AntennaPortGetStatus => {Result}", result);
+            logger.Information("\tRadioHandle used       : " + radioHandle);
+            logger.Information("\tLength found           : " + antennaPortStatus.length);
+            logger.Information("\tState found            : " + antennaPortStatus.state);
+            logger.Information("\tSense Value found      : " + antennaPortStatus.antennaSenseValue);
+        }
+
+        private void SetAntennaPortStatus(int radioHandle, AntennaPortState portState)
+        {
+            Result result = link.AntennaPortSetState(radioHandle, 0, portState);
+
+            logger.Information("link.AntennaPortSetStatus ( {PortState} ) => {Result}", portState, result);
         }
 
         private void AntennaPortGetConfiguration(int radioHandle)
@@ -610,24 +617,26 @@ namespace RfidConsole
             logger.Information("\tSense Threshold( glob ) found : " + antennaPortConfig.antennaSenseThreshold);
         }
 
-        private void SetAntennaPortStatus(int radioHandle, AntennaPortState portState)
+        private void AntennaPortSetConfiguration(int radioHandle, uint dwellTime, uint powerLevel)
         {
-            Result result = link.AntennaPortSetState(radioHandle, 0, portState);
+            if (powerLevel > 330)
+            {
+                throw new ArgumentOutOfRangeException(nameof(powerLevel), "Maximum allowed is 330");
+            }
 
-            logger.Information("link.AntennaPortSetStatus ( {PortState} ) => {Result}", portState, result);
-        }
+            AntennaPortConfig antennaPortConfig = new AntennaPortConfig();
 
-        private void GetAntennaPortStatus(int radioHandle)
-        {
-            AntennaPortStatus antennaPortStatus = new AntennaPortStatus();
+            link.AntennaPortGetConfiguration(radioHandle, 0, antennaPortConfig);
 
-            var result = link.AntennaPortGetStatus(radioHandle, 0, antennaPortStatus);
+            antennaPortConfig.dwellTime = dwellTime;
 
-            logger.Information("link.AntennaPortGetStatus => {Result}", result);
-            logger.Information("\tRadioHandle used       : " + radioHandle);
-            logger.Information("\tLength found           : " + antennaPortStatus.length);
-            logger.Information("\tState found            : " + antennaPortStatus.state);
-            logger.Information("\tSense Value found      : " + antennaPortStatus.antennaSenseValue);
+            // The power level for the logical antenna port’s physical transmit antenna, specified in 1/10th dBm
+            // Default is 300 (30 dBm), absolute maximum is 330 (33 dBm)
+            antennaPortConfig.powerLevel = powerLevel;
+
+            Result result = link.AntennaPortSetConfiguration(radioHandle, 0, antennaPortConfig);
+
+            logger.Information("link.AntennaPortSetConfiguration => {Result}", result);
         }
 
         private void EnumerateLinkProfiles(int radioHandle)
@@ -687,21 +696,21 @@ namespace RfidConsole
             logger.Information("\tRadioHandle used           : " + radioHandle);
         }
 
-        private void SetRadioPowerState(int radioHandle, RadioPowerState powerState)
-        {
-            Result result = link.RadioSetPowerState(radioHandle, powerState);
-
-            logger.Information("link.RadioSetPowerState ( {PowerState} ) => {Result}", powerState, result);
-        }
-
         private void RadioGetPowerState(int radioHandle)
         {
-            var powerState = new RadioPowerState();
+            var powerState = RadioPowerState.UNKNOWN;
             var result = link.RadioGetPowerState(radioHandle, ref powerState);
 
             logger.Information("link.RadioGetPowerState => {Result}", result);
             logger.Information("\tRadioHandle used    : " + radioHandle);
-            logger.Information("\tPowerState found    : " + powerState);
+            logger.Information("\tPowerState found    : {PowerState}", powerState);
+        }
+
+        private void RadioSetPowerState(int radioHandle, RadioPowerState powerState)
+        {
+            Result result = link.RadioSetPowerState(radioHandle, powerState);
+
+            logger.Information("link.RadioSetPowerState ( {PowerState} ) => {Result}", powerState, result);
         }
 
         private void RadioGetOperationMode(int radioHandle)
@@ -738,6 +747,23 @@ namespace RfidConsole
 
             logger.Information("link.MacGetVersion => {Result}", result);
             logger.Information("MacVersion {@Version}", new { macVersion.major, macVersion.minor, macVersion.maintenance, macVersion.release });
+        }
+
+        /// <summary>
+        /// Reset the RFID Radio Module to restore the default configuration.
+        /// </summary>
+        /// <remarks>
+        /// Rfiddler may not restore all configuration changes, therefore it's best to reset the device to the default state.
+        /// </remarks>
+        private void MacReset()
+        {
+            RadioEnumeration radios = RetrieveAttachedRadiosList();
+
+            int radioHandle = RadioOpen(radios);
+
+            Result result = link.MacReset(radioHandle, MacResetType.SOFT);
+
+            logger.Information("link.MacReset => {Result}", result);
         }
 
         private int PacketCallback([In] int handle, [In] uint bufferLength, [In] IntPtr pBuffer, [In, Out] IntPtr context)

@@ -3,16 +3,15 @@
 ## To do
 ~~log uniqueId~~
 ~~packet type enum in callback~~
-compare driver version
+~~reset device~~
 
+params
 log RFID tag
 trace debug port
-MillisecondsBetweenDuplicateReads vd Dwell time
 
-
-differences with AiC
-	antenna config
-	additional features config
+~~differences with AiC~~
+	~~antenna config~~
+	~~extensions config~~
 	
 
 
