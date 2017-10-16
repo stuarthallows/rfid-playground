@@ -5,7 +5,7 @@ namespace RfidConsole
 {
     static class Program
     {
-        static int Main(string[] args)
+        static int Main()
         {
             try
             {
@@ -18,7 +18,7 @@ namespace RfidConsole
 
                 using (var fiddler = new Rfiddler())
                 {
-                    fiddler.Start(args);
+                    fiddler.Start();
                 }
 
                 return 0;
