@@ -1,11 +1,12 @@
 ﻿using System;
+using CommandLine;
 using Serilog;
 
 namespace RfidConsole
 {
     static class Program
     {
-        static int Main()
+        static int Main(string[] args)
         {
             try
             {
@@ -16,9 +17,19 @@ namespace RfidConsole
                     .MinimumLevel.Verbose()
                     .CreateLogger();
 
-                using (var fiddler = new Rfiddler())
+                var options = new Options();
+                if (Parser.Default.ParseArguments(args, options))
                 {
-                    fiddler.Start();
+                    Log.Information("Running with {@Options}", options);
+
+                    using (var fiddler = new Rfiddler(options))
+                    {
+                        fiddler.Start();
+                    }
+                }
+                else
+                {
+                    Log.Information(options.GetUsage());
                 }
 
                 return 0;

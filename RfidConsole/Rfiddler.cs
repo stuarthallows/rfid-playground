@@ -19,18 +19,22 @@ namespace RfidConsole
     /// </remarks>
     public class Rfiddler: IDisposable
     {
+        private readonly Options options;
         private readonly ILogger logger = Log.Logger.ForContext<Rfiddler>();
         private readonly Linkage link = new Linkage();
 
         static Int32 _callbackCount;
         static uint enableSelectCriteria = 0x00; // set to 0x01 to enable
         static uint enablePostSingulationMatch = 0x00; // set to 0x02 to enable
-        static bool enableTagFocus;
         private bool enableTagSuppression;
-        private bool enableFastId;
         private bool enableTagLock = false;
         private bool enableTagKill = false;
         private bool disposed;
+
+        public Rfiddler(Options options)
+        {
+            this.options = options;
+        }
 
         public void Start()
         {
@@ -78,7 +82,7 @@ namespace RfidConsole
 
             AntennaPortGetConfiguration(radioHandle);
 
-            AntennaPortSetConfiguration(radioHandle, 2000, 300);
+            AntennaPortSetConfiguration(radioHandle, (uint)options.DwellTime, (uint)options.PowerLevel);
 
             var selectCriteria = Set18K6CSelectCriteria(radioHandle);
 
@@ -233,7 +237,7 @@ namespace RfidConsole
 
         private void RadioTurnCarrierWaveOnRandom(int radioHandle)
         {
-            var program = new Rfiddler();
+            var program = new Rfiddler(options);
 
             RandomCwParms randomCwParms = new RandomCwParms();
 
@@ -246,7 +250,7 @@ namespace RfidConsole
             logger.Information("link.MacWriteRegister => {Result}", result);
 
             logger.Information("Starting random cw test:");
-            logger.Information("Limiting to 40 MAC packets");
+            logger.Information($"Limiting to {options.PacketCount} MAC packets");
 
 #if TEST_NULL_RANDOM_CW_CALLBACK
             randomCwParms.callback = null;
@@ -266,7 +270,7 @@ namespace RfidConsole
 
         private void Tag18K6CLock(int radioHandle)
         {
-            var program = new Rfiddler();
+            var program = new Rfiddler(options);
 
             // LOCK check - do not want to accidentally have tags locked unexpectedly...
             if (!program.enableTagLock)
@@ -296,7 +300,7 @@ namespace RfidConsole
 
         private void Tag18K6CKill(int radioHandle)
         {
-            var program = new Rfiddler();
+            var program = new Rfiddler(options);
 
             // KILL check - do not want to accidentally have tags killed unexpectedly...
             if (!program.enableTagKill)
@@ -321,11 +325,11 @@ namespace RfidConsole
 
         private void Tag18K6CBlockErase(int radioHandle)
         {
-            var program = new Rfiddler();
+            var program = new Rfiddler(options);
 
             BlockEraseParms blockEraseParms = new BlockEraseParms();
 
-            logger.Information("Starting basic block erase test, limiting of 40 MAC packets");
+            logger.Information($"Starting basic block erase test, limiting of {options.PacketCount} MAC packets");
 
             blockEraseParms.common.tagStopCount = 0;
             blockEraseParms.common.callback = program.PacketCallback;
@@ -346,12 +350,12 @@ namespace RfidConsole
         // ReSharper disable once InconsistentNaming
         private void Tag18K6CQT(int radioHandle)
         {
-            var program = new Rfiddler();
+            var program = new Rfiddler(options);
 
             QTParms qtParms = new QTParms();
 
 
-            logger.Information("Starting basic QT test, limiting of 40 MAC packets");
+            logger.Information($"Starting basic QT test, limiting of {options.PacketCount} MAC packets");
 
             qtParms.common.tagStopCount = 0;
             qtParms.common.callback = program.PacketCallback;
@@ -382,11 +386,11 @@ namespace RfidConsole
 
         private void Tag18K6CRead(int radioHandle)
         {
-            Rfiddler program = new Rfiddler();
+            Rfiddler program = new Rfiddler(options);
 
             ReadParms readParms = new ReadParms();
 
-            logger.Information("Starting basic read test, limiting of 40 MAC packets");
+            logger.Information($"Starting basic read test, limiting of {options.PacketCount} MAC packets");
 
             readParms.common.tagStopCount = 0;
             readParms.common.callback = program.PacketCallback;
@@ -406,9 +410,9 @@ namespace RfidConsole
 
         private void Tag18K6CInventory(int radioHandle)
         {
-            logger.Information("Starting basic inventory test, limiting of 40 MAC packets");
+            logger.Information($"Starting basic inventory test, limiting of {options.PacketCount} MAC packets");
 
-            Rfiddler program = new Rfiddler();
+            Rfiddler program = new Rfiddler(options);
 
             InventoryParms inventoryParms = new InventoryParms();
 
@@ -434,7 +438,7 @@ namespace RfidConsole
             fqp.retryCount = 1;
             fqp.repeatUntilNoTags = 1;
 
-            if (enableTagFocus)
+            if (options.IsTagFocusEnabled)
             {
                 fqp.toggleTarget = 0;
             }
@@ -503,8 +507,8 @@ namespace RfidConsole
             logger.Information("link.RadioGetImpinjExtensions => {Result}", result);
             logger.Information("ImpinjExtensions: {@Extensions}", new { extensions.fastId, extensions.tagFocus, extensions.blockWriteMode });
 
-            extensions.tagFocus = enableTagFocus ? TagFocus.FOCUS_ENABLED : TagFocus.FOCUS_DISABLED;
-            extensions.fastId = enableFastId ? FastId.FAST_ID_ENABLED : FastId.FAST_ID_DISABLED;
+            extensions.tagFocus = options.IsTagFocusEnabled ? TagFocus.FOCUS_ENABLED : TagFocus.FOCUS_DISABLED;
+            extensions.fastId = options.IsFastIdEnabled ? FastId.FAST_ID_ENABLED : FastId.FAST_ID_DISABLED;
             extensions.blockWriteMode = BlockWriteMode.AUTO;
 
             result = link.RadioSetImpinjExtensions(radioHandle, extensions);
@@ -530,7 +534,7 @@ namespace RfidConsole
                 group.selected = Selected.SELECT_ASSERTED;
             }
 
-            if (enableTagFocus)
+            if (options.IsTagFocusEnabled)
             {
                 group.session = Session.S1;
             }
@@ -789,12 +793,10 @@ namespace RfidConsole
 
 
             var packetType1 = (PacketType)(short)((packetBuffer[3] << 8) | packetBuffer[2]);
-
             var packetType = (Int16)((packetBuffer[3] << 8) | packetBuffer[2]);
 
             var packetLength = (Int16)((packetBuffer[5] << 8) | packetBuffer[4]);
-            var packetTypeString = "Mac Packet received, PacketType = ";
-            packetTypeString += $"0x{packetType:X4}";
+            var packetTypeString = $"Mac Packet received, PacketType = 0x{packetType:X4} ({packetType1})";
 
             logger.Information(packetTypeString);
 
@@ -807,10 +809,7 @@ namespace RfidConsole
                     logger.Warning("MAC error code {MacErrorCode} returned by reader", macErrorCode);
                 }
 
-                var packetStatusString = "EndPacket Status = ";
-                packetStatusString += string.Format("0x{0:X2}{1:X2}{2:X2}{3:X2}", packetBuffer[15], packetBuffer[14], packetBuffer[13], packetBuffer[12]);
-
-                logger.Information(packetStatusString);
+                logger.Information($"EndPacket Status = 0x{packetBuffer[15]:X2}{packetBuffer[14]:X2}{packetBuffer[13]:X2}{packetBuffer[12]:X2}");
             }
             else if (packetType1 == PacketType.Inventory)
             {
@@ -830,7 +829,7 @@ namespace RfidConsole
 
                 //// Get the length of the inventory data.
                 //// We have to make some assumptions because the packet flag for FastID is NOT being set.
-                //// Bits 2 and 3 represent the FastId flag, and it is returning zero.
+                //// Bits 2 and 3 represent the IsFastIdEnabled flag, and it is returning zero.
                 //// We will make the following assumption:
                 //// - If the length of the inventory data > 128 bits (The max length of EPC), then well assume the last 96 bits are the TID.
                 //int tidOffset = int.MaxValue;
@@ -905,7 +904,7 @@ namespace RfidConsole
 
             ++_callbackCount;
 
-            if (40 == _callbackCount)
+            if (options.PacketCount == _callbackCount)
             {
                 return 1;
             }
