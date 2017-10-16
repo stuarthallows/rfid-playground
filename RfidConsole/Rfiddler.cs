@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using rfid;
 using rfid.Constants;
 using rfid.Structures;
@@ -26,9 +25,9 @@ namespace RfidConsole
         static Int32 _callbackCount;
         static uint enableSelectCriteria = 0x00; // set to 0x01 to enable
         static uint enablePostSingulationMatch = 0x00; // set to 0x02 to enable
-        private bool enableTagSuppression;
         private bool enableTagLock = false;
         private bool enableTagKill = false;
+
         private bool disposed;
 
         public Rfiddler(Options options)
@@ -432,20 +431,14 @@ namespace RfidConsole
         {
             // Fixed.
 
-            FixedQParms fqp = new FixedQParms();
-
-            fqp.qValue = 1;
-            fqp.retryCount = 1;
-            fqp.repeatUntilNoTags = 1;
-
-            if (options.IsTagFocusEnabled)
+            // See RFID_18K6C_SINGULATION_FIXEDQ_PARMS
+            FixedQParms fqp = new FixedQParms
             {
-                fqp.toggleTarget = 0;
-            }
-            else
-            {
-                fqp.toggleTarget = 1;
-            }
+                qValue = 1,
+                retryCount = 1,
+                repeatUntilNoTags = 1,
+                toggleTarget = options.IsTagFocusEnabled ? 0U : 1
+            };
 
             var result = link.Set18K6CSingulationAlgorithmParameters(radioHandle, SingulationAlgorithm.FIXEDQ, fqp);
 
@@ -453,22 +446,15 @@ namespace RfidConsole
 
             // Dynamic.
 
-            DynamicQParms dqp = new DynamicQParms();
-
-            dqp.startQValue = 3;
-            dqp.minQValue = 0;
-            dqp.maxQValue = 7;
-            dqp.retryCount = 1;
-            dqp.thresholdMultiplier = 4;
-
-            if (enableTagSuppression)
+            DynamicQParms dqp = new DynamicQParms
             {
-                dqp.toggleTarget = 0;
-            }
-            else
-            {
-                dqp.toggleTarget = 1;
-            }
+                startQValue = 3,
+                minQValue = 0,
+                maxQValue = 7,
+                retryCount = 1,
+                thresholdMultiplier = 4,
+                toggleTarget = options.IsTagFocusEnabled ? 0U : 1
+            };
 
             result = link.Set18K6CSingulationAlgorithmParameters(radioHandle, SingulationAlgorithm.DYNAMICQ, dqp);
 
@@ -507,8 +493,13 @@ namespace RfidConsole
             logger.Information("link.RadioGetImpinjExtensions => {Result}", result);
             logger.Information("ImpinjExtensions: {@Extensions}", new { extensions.fastId, extensions.tagFocus, extensions.blockWriteMode });
 
+            // When performing Inventory operations, if a tag is singulated, this extension is enabled, and the additional pre-requisite inventory 
+            // controls have been configured, the tag will be suppressed in the tag population for the duration of the inventory operation.
             extensions.tagFocus = options.IsTagFocusEnabled ? TagFocus.FOCUS_ENABLED : TagFocus.FOCUS_DISABLED;
+
+            // When performing Inventory operations, if a tag is singulated and this extension is enabled, then the Tag TID memory is returned along with the Tag EPC data.
             extensions.fastId = options.IsFastIdEnabled ? FastId.FAST_ID_ENABLED : FastId.FAST_ID_DISABLED;
+
             extensions.blockWriteMode = BlockWriteMode.AUTO;
 
             result = link.RadioSetImpinjExtensions(radioHandle, extensions);
@@ -522,26 +513,17 @@ namespace RfidConsole
         private void Set18K6CQueryTagGroup(int radioHandle)
         {
             // Configure the query tag group to only get tags with the SL asserted
-            TagGroup group = new TagGroup();
-            group.target = SessionTarget.A;
+            var group = new TagGroup
+            {
+                // Specifies the state of the selected (SL) flag for tags that will have the operation applied to them.
+                selected = 0 == enableSelectCriteria ? Selected.SELECT_ALL : Selected.SELECT_ASSERTED,
 
-            if (0 == enableSelectCriteria)
-            {
-                group.selected = Selected.SELECT_ALL;
-            }
-            else
-            {
-                group.selected = Selected.SELECT_ASSERTED;
-            }
+                // Specifies which inventory session flag (S0, S1, S2, or S3) will be matched against the inventory state specified by target.
+                session = options.IsTagFocusEnabled ? Session.S1 : Session.S2,
 
-            if (options.IsTagFocusEnabled)
-            {
-                group.session = Session.S1;
-            }
-            else
-            {
-                group.session = Session.S2;
-            }
+                // Specifies the state of the inventory session flag (A or B), specified by session, for tags that will have the operation applied to them.
+                target = SessionTarget.A
+            };
 
             var result = link.Set18K6CQueryTagGroup(radioHandle, group);
 
@@ -821,64 +803,6 @@ namespace RfidConsole
                 }
 
                 logger.Verbose(packetEpcString);
-
-
-
-
-                //int startByte = 20; // Inventory data starts at byte 20
-
-                //// Get the length of the inventory data.
-                //// We have to make some assumptions because the packet flag for FastID is NOT being set.
-                //// Bits 2 and 3 represent the IsFastIdEnabled flag, and it is returning zero.
-                //// We will make the following assumption:
-                //// - If the length of the inventory data > 128 bits (The max length of EPC), then well assume the last 96 bits are the TID.
-                //int tidOffset = int.MaxValue;
-                //if ((packetBuffer.Length - startByte) > 16)
-                //{
-                //    tidOffset = packetBuffer.Length - 2 - 12; // 2 is the lats two bytes of CRC, and 12 is the length of the 96 bit TID.
-                //}
-
-                //// The Inventory Response packet contains the data a tag backscatters during the tag singulation phase.
-                //// The inventory data is made up of: Protocol-Contol bits (PC), the Electronic Product Code (EPC) and the Cyclic Redundancy Check (CRC16).
-                //// From the Impinj documentation, the Inventory data starts at byte 20, and is variable length.
-                //// The PC is 1 word and always the first 2 bytes.
-                //// The EPC follows.
-                //// The CRC16 is always 1 word and is the last 2 bytes
-                //// Note that when we issue a Tag reag (Indy Host RFID_18K6CTagRead), for each tag in range the Inventory packet will be processed first, followed by the tag read packet.
-
-                //List<byte> pc = new List<byte>();
-                //List<byte> epc = new List<byte>();
-                //List<byte> crc = new List<byte>();
-                //List<byte> tid = new List<byte>();
-
-                //// Build byte arrays for the various values (PC, EPC, CRC, TID).
-                //for (int index = startByte; index < packetBuffer.Length; index++)
-                //{
-                //    // First 2 bytes are the PC
-                //    if (index == startByte || index == startByte + 1)
-                //    {
-                //        pc.Add(packetBuffer[index]);
-                //    }
-                //    // Last 2 bytes are the CRC16
-                //    else if (index == packetBuffer.Length - 1 || index == packetBuffer.Length - 2)
-                //    {
-                //        crc.Add(packetBuffer[index]);
-                //    }
-                //    else
-                //    {
-                //        if (index < tidOffset)
-                //        {
-                //            epc.Add(packetBuffer[index]);
-                //        }
-                //        else
-                //        {
-                //            tid.Add(packetBuffer[index]);
-                //        }
-                //    }
-                //}
-
-                //var tidId = ConvertBytesToHexString(tid.ToArray());
-                //logger.Warning("The TID: {TID}", tidId);
             }
             else if (packetType1 == PacketType.TagAccess)
             {
@@ -948,26 +872,5 @@ namespace RfidConsole
 
             return value;
         }
-
-        /// <summary>
-        /// Converts an array of bytes to a HEX string.
-        /// </summary>
-        public static string ConvertBytesToHexString(byte[] data)
-        {
-            if (data == null || data.Length == 0)
-            {
-                return null;
-            }
-
-            var sb = new StringBuilder();
-
-            for (int i = 0; i < data.Length; i++)
-            {
-                string hexChar = $"{data[i]:X2}";
-                sb.Append(hexChar);
-            }
-
-            return sb.ToString();
-        }
-    }
+   }
 }
